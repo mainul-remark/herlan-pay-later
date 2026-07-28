@@ -3,7 +3,7 @@
  * Plugin Name: Herlan Pay Later
  * Plugin URI: https://herlan.com
  * Description: Adds a "Pay Later" WooCommerce payment method that behaves like Cash on Delivery, but is only available at checkout to specific customer roles chosen from the admin settings.
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: Muhammad Ali
  * Text Domain: herlan-pay-later
  * Requires Plugins: woocommerce
