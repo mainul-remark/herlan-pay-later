@@ -33,6 +33,14 @@ class WC_Gateway_Pay_Later extends WC_Payment_Gateway
      */
     public $allowed_roles;
 
+    /**
+     * Rich-text "feature policy" content shown to customers in a popup via
+     * the "?" icon on the checkout email-verification bar (auth-popup plugin).
+     *
+     * @var string
+     */
+    public $feature_policy;
+
     public function __construct()
     {
         $this->id                 = HPL_GATEWAY_ID;
@@ -48,6 +56,7 @@ class WC_Gateway_Pay_Later extends WC_Payment_Gateway
         $this->description   = $this->get_option('description');
         $this->instructions  = $this->get_option('instructions');
         $this->allowed_roles = $this->get_option('allowed_roles', array());
+        $this->feature_policy = $this->get_option('feature_policy', '');
 
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'thankyou_page'));
@@ -101,6 +110,12 @@ class WC_Gateway_Pay_Later extends WC_Payment_Gateway
                     'data-placeholder' => __('Select roles', 'herlan-pay-later'),
                 ),
             ),
+            'feature_policy' => array(
+                'title'       => __('Feature Policy', 'herlan-pay-later'),
+                'type'        => 'wysiwyg',
+                'description' => __('Shown to customers in a popup when they click the "?" icon on the email-verification bar at checkout. Leave blank to hide the icon.', 'herlan-pay-later'),
+                'default'     => '',
+            ),
         );
     }
 
@@ -116,6 +131,66 @@ class WC_Gateway_Pay_Later extends WC_Payment_Gateway
             $options[$role_key] = translate_user_role($role_name);
         }
         return $options;
+    }
+
+    /**
+     * Render the "Feature Policy" field as a rich-text editor instead of the
+     * WooCommerce settings API's default plain-text input.
+     *
+     * @param string $key
+     * @param array  $data
+     * @return string
+     */
+    public function generate_wysiwyg_html($key, $data)
+    {
+        $field_key = $this->get_field_key($key);
+        $data      = wp_parse_args($data, array(
+            'title'       => '',
+            'desc_tip'    => false,
+            'description' => '',
+        ));
+
+        ob_start();
+        ?>
+        <tr valign="top">
+            <th scope="row" class="titledesc">
+                <label for="<?php echo esc_attr($field_key); ?>"><?php echo wp_kses_post($data['title']); ?> <?php echo $this->get_tooltip_html($data); ?></label>
+            </th>
+            <td class="forminp">
+                <fieldset>
+                    <legend class="screen-reader-text"><span><?php echo wp_kses_post($data['title']); ?></span></legend>
+                    <?php
+                    wp_editor(
+                        $this->get_option($key),
+                        $field_key,
+                        array(
+                            'textarea_name' => $field_key,
+                            'textarea_rows' => 10,
+                            'media_buttons' => false,
+                            'teeny'         => true,
+                        )
+                    );
+                    ?>
+                    <?php echo $this->get_description_html($data); ?>
+                </fieldset>
+            </td>
+        </tr>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Sanitize the "Feature Policy" rich-text field before saving, keeping
+     * safe HTML (the same rules WooCommerce applies to its own textarea type).
+     *
+     * @param string $key
+     * @param string $value
+     * @return string
+     */
+    public function validate_wysiwyg_field($key, $value)
+    {
+        $value = is_null($value) ? '' : $value;
+        return wp_kses_post(trim(wp_unslash($value)));
     }
 
     /**
